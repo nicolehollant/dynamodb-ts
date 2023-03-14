@@ -20,11 +20,11 @@
   "license": "MIT",
   "exports": {
     ".": {
-      "default": "./dist/index.cjs",
       "require": "./dist/index.cjs",
       "import": "./dist/index.mjs",
       "node": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.cjs"
     }
   },
   "devDependencies": {
