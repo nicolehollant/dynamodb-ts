@@ -1,6 +1,6 @@
 {
   "name": "dynamodb-ts",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "ts dynamo client :3",
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -45,5 +45,6 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nicolehollant/dynamodb-ts.git"
-  }
+  },
+  "gitHead": "6ae0ebb28b2a9a93b2faa434ee500698aa57868d"
 }

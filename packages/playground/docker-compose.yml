@@ -1,0 +1,21 @@
+version: '3.7'
+services:
+  dynamodb:
+    image:  amazon/dynamodb-local
+    container_name: dynamodb-ts-playground
+    networks:
+      - local-dynamodb
+    working_dir: /home/dynamodblocal
+    restart: always
+    volumes:
+      -  dynamodata:/home/dynamodblocal
+    ports:
+      - 8000:8000
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ."
+
+networks:
+  local-dynamodb:
+    name: local-dynamodb
+
+volumes: 
+  dynamodata: {}
