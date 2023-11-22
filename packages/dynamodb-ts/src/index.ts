@@ -250,6 +250,44 @@ export const dynamoTs = <DynamoSchema extends Schema>({
     return res
   }
 
+  const updateItem = <ModelKey extends keyof DynamoSchema['models'], T>(
+    modelName: ModelKey,
+    params: T,
+    existing?: DynamoSchema['models'][ModelKey]
+  ) => {
+    type Model = (typeof schema)['models'][ModelKey]
+    const init = Object.fromEntries(
+      Object.entries((schema['models'] as any)[modelName] as Model)
+        .filter(([key, value]) => !!(value as any).required || !!((value as any).generate === 'cuid'))
+        .map(([key, value]) => {
+          if (existing && key in existing) {
+            return [key, existing[key]]
+          }
+          if ((value as any).required) {
+            const val = params[key as any as keyof typeof params]
+            return [key, value.type.parse(val)]
+          }
+          if ((value as any).generate === 'cuid') {
+            const val = cuid()
+            return [key, value.type.parse(val)]
+          }
+          return [key, undefined]
+        })
+    )
+    const res = {
+      ...init,
+      ...Object.fromEntries(
+        Object.entries((schema['models'] as any)[modelName] as Model)
+          .filter(([key, value]) => !!(value as any).value)
+          .map(([key, value]) => {
+            const val = (value as any)?.value?.({ ...params, ...init })
+            return [key, value.type.parse(val)]
+          })
+      ),
+    }
+    return res
+  }
+
   const client = dynamo.DocumentClient
 
   const get = async (params: {
@@ -393,10 +431,16 @@ export const dynamoTs = <DynamoSchema extends Schema>({
     }
 
     const update = async (
-      params: CreateParams<(typeof schema)['models'][ModelKey]> & { sk: string }
+      params: CreateParams<(typeof schema)['models'][ModelKey]> & { sk: string },
+      options?: { upsert?: boolean }
     ): Promise<CreateResult<(typeof schema)['models'][ModelKey]>> => {
       let { sk, ...ItemParams } = params
-      const Item = createItem(modelName, ItemParams) as CreateResult<(typeof schema)['models'][ModelKey]>
+      const currentItem = await get({ sk })
+      const Item = updateItem(
+        modelName,
+        ItemParams,
+        currentItem as (typeof schema)['models'][ModelKey]
+      ) as CreateResult<(typeof schema)['models'][ModelKey]>
       const dynamoResult = await dynamo.DocumentClient.put({
         TableName,
         Item: {
