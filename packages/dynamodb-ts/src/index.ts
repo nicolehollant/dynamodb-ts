@@ -100,7 +100,7 @@ const zodFirstPartyTypeKindToAttributeTypeMap = {
 
 const zodToDynamoType = (
   zodSchema: MaybeZodSchema
-): typeof zodFirstPartyTypeKindToAttributeTypeMap[keyof typeof zodFirstPartyTypeKindToAttributeTypeMap] => {
+): (typeof zodFirstPartyTypeKindToAttributeTypeMap)[keyof typeof zodFirstPartyTypeKindToAttributeTypeMap] => {
   if (!zodSchema?._def?.typeName) {
     return 'S'
   }
@@ -220,7 +220,7 @@ export const dynamoTs = <DynamoSchema extends Schema>({
   }
 
   const createItem = <ModelKey extends keyof DynamoSchema['models'], T>(modelName: ModelKey, params: T) => {
-    type Model = typeof schema['models'][ModelKey]
+    type Model = (typeof schema)['models'][ModelKey]
     const init = Object.fromEntries(
       Object.entries((schema['models'] as any)[modelName] as Model)
         .filter(([key, value]) => !!(value as any).required || !!((value as any).generate === 'cuid'))
@@ -334,10 +334,10 @@ export const dynamoTs = <DynamoSchema extends Schema>({
     return result
   }
 
-  const model = <ModelKey extends keyof typeof schema['models']>(modelName: ModelKey) => {
-    type Model = typeof schema['models'][ModelKey]
+  const model = <ModelKey extends keyof (typeof schema)['models']>(modelName: ModelKey) => {
+    type Model = (typeof schema)['models'][ModelKey]
     const pk = ((schema['models'] as any)[modelName] as Model).pk.value()
-    type SK = ReturnType<typeof schema['models'][ModelKey]['sk']['type']['parse']>
+    type SK = ReturnType<(typeof schema)['models'][ModelKey]['sk']['type']['parse']>
 
     const table = () => {
       return { pk, TableName }
@@ -382,12 +382,28 @@ export const dynamoTs = <DynamoSchema extends Schema>({
     }
 
     const create = async (
-      params: CreateParams<typeof schema['models'][ModelKey]>
-    ): Promise<CreateResult<typeof schema['models'][ModelKey]>> => {
-      const Item = createItem(modelName, params) as CreateResult<typeof schema['models'][ModelKey]>
+      params: CreateParams<(typeof schema)['models'][ModelKey]>
+    ): Promise<CreateResult<(typeof schema)['models'][ModelKey]>> => {
+      const Item = createItem(modelName, params) as CreateResult<(typeof schema)['models'][ModelKey]>
       const dynamoResult = await dynamo.DocumentClient.put({
         TableName,
         Item,
+      }).promise()
+      return Item
+    }
+
+    const update = async (
+      params: CreateParams<(typeof schema)['models'][ModelKey]> & { sk: string }
+    ): Promise<CreateResult<(typeof schema)['models'][ModelKey]>> => {
+      let { sk, ...ItemParams } = params
+      const Item = createItem(modelName, ItemParams) as CreateResult<(typeof schema)['models'][ModelKey]>
+      const dynamoResult = await dynamo.DocumentClient.put({
+        TableName,
+        Item: {
+          ...Item,
+          sk,
+          pk,
+        },
       }).promise()
       return Item
     }
@@ -403,10 +419,10 @@ export const dynamoTs = <DynamoSchema extends Schema>({
       return result
     }
 
-    const createMany = async (params: CreateParams<typeof schema['models'][ModelKey]>[]) => {
+    const createMany = async (params: CreateParams<(typeof schema)['models'][ModelKey]>[]) => {
       const Items = params.map((item) => ({
         PutRequest: {
-          Item: createItem(modelName, item) as CreateResult<typeof schema['models'][ModelKey]>,
+          Item: createItem(modelName, item) as CreateResult<(typeof schema)['models'][ModelKey]>,
         },
       }))
 
@@ -418,7 +434,7 @@ export const dynamoTs = <DynamoSchema extends Schema>({
       return Items
     }
 
-    return { create, table, createMany, get, query: _query, all, delete: _delete }
+    return { create, table, createMany, get, query: _query, all, delete: _delete, update }
   }
 
   return { model, table, client, query, get }
