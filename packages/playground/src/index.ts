@@ -74,6 +74,7 @@ export const main = async () => {
   const getPost = await model('post').get({
     sk: postsQuery.Items?.[0].sk,
   })
+
   const deleted = await model('post').delete({ sk: postsQuery.Items?.[0].sk })
   const postsQuery2 = await model('post').query({
     beginsWith: 'clf',
